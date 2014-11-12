@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Might There Be Ice</string>
+    <string name="enter_location">Enter your location: </string>
+    <string name="location_hint">Eg. Vancouver</string>\
+    <string name="submit">Might There Be Ice?</string>
+    <string name="action_settings">Settings</string>
+
+</resources>
