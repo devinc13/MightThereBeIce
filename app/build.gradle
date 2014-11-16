@@ -20,6 +20,7 @@ android {
 }
 
 dependencies {
-    compile 'com.mcxiaoke.volley:library:1.0.7'
+    compile 'com.netflix.rxjava:rxjava-android:0.20.0-RC4'
+    compile 'com.squareup.retrofit:retrofit:1.7.1'
     compile fileTree(dir: 'libs', include: ['*.jar'])
 }

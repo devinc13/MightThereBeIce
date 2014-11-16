@@ -10,14 +10,19 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-import com.android.volley.toolbox.Volley;
+import java.util.List;
+
+import DataObjects.ApiData;
+import DataObjects.Hourly;
+import retrofit.RestAdapter;
+import rx.Observer;
+import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class LocationSelectFragment extends Fragment {
+
+    private Subscription subscription;
 
     public LocationSelectFragment() {
     }
@@ -39,30 +44,56 @@ public class LocationSelectFragment extends Fragment {
                 if (location.isEmpty()) {
                     Toast.makeText(getActivity(), R.string.error_empty_location, Toast.LENGTH_SHORT).show();
                 } else {
+                    RestAdapter restAdapter = new RestAdapter.Builder()
+                            .setEndpoint("http://api.worldweatheronline.com")
+                            .build();
 
-                    RequestQueue queue = Volley.newRequestQueue(getActivity());
-                    String url = "http://api.worldweatheronline.com/free/v2/past-weather.ashx?q="
-                            + location
-                            + "&format=json&extra=localObsTime%2CisDayTime&date=today&key=7ce966b5e2e278e92e32afaa8a1c2";
+                    RequestManager service = restAdapter.create(RequestManager.class);
 
-                    StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                            new Response.Listener() {
+                    subscription = service.getData(location, Keys.getWeatherApiKey())
+                            .subscribeOn(Schedulers.io())
+                            .observeOn(AndroidSchedulers.mainThread())
+                            .subscribe(new Observer<ApiData>() {
                                 @Override
-                                public void onResponse(Object response) {
-                                    textView.setText(response.toString());
+                                public void onCompleted() {
+                                    if (subscription != null && !subscription.isUnsubscribed()) {
+                                        subscription.unsubscribe();
+                                    }
                                 }
-                            }, new Response.ErrorListener() {
-                        @Override
-                        public void onErrorResponse(VolleyError error) {
-                            textView.setText("That didn't work!");
-                        }
-                    });
 
-                    queue.add(stringRequest);
+                                @Override
+                                public void onError(Throwable e) {
+
+                                    if (subscription != null && !subscription.isUnsubscribed()) {
+                                        subscription.unsubscribe();
+                                    }
+                                }
+
+                                @Override
+                                public void onNext(ApiData apiData) {
+                                    String weather = "Location = " + apiData.getData().getRequest().get(0).getQuery() + "\n";
+                                    weather = weather + "Date = " + apiData.getData().getWeather().get(0).getDate() + "\n";
+                                    List<Hourly> hourly = apiData.getData().getWeather().get(0).getHourly();
+                                    for (int i = 0; i < hourly.size(); i++) {
+                                        weather = weather + hourly.get(i).getTime() + " : " + hourly.get(i).getTempC() + " °C\n";
+                                    }
+
+                                    textView.setText(weather);
+                                }
+                            });
                 }
             }
         });
 
         return view;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        if (subscription != null && !subscription.isUnsubscribed()) {
+            subscription.unsubscribe();
+        }
     }
 }
