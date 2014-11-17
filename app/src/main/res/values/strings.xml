@@ -3,7 +3,7 @@
 
     <string name="app_name">Might There Be Ice</string>
     <string name="enter_location">Enter your location: </string>
-    <string name="location_hint">Eg. Vancouver</string>\
+    <string name="location_hint">City or Lat/Lng</string>\
     <string name="submit">Might There Be Ice?</string>
     <string name="error_empty_location">Please enter a location</string>
     <string name="action_settings">Settings</string>
