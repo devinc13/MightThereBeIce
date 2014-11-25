@@ -10,7 +10,6 @@ public class Hourly {
     private String HeatIndexC;
     private String HeatIndexF;
     private String humidity;
-    private String isdaytime;
     private String precipMM;
     private String pressure;
     private String tempC;
@@ -57,11 +56,6 @@ public class Hourly {
 
     public String getHumidity() {
         return humidity;
-    }
-
-
-    public String getIsdaytime() {
-        return isdaytime;
     }
 
     public String getPrecipMM() {

@@ -8,15 +8,26 @@ import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
 
 import java.util.ArrayList;
+import java.util.List;
+
+import LocationDataObjects.LocationApiData;
+import LocationDataObjects.Result;
+import retrofit.RestAdapter;
+import rx.Observer;
+import rx.Subscription;
+import rx.android.schedulers.AndroidSchedulers;
+import rx.schedulers.Schedulers;
 
 public class LocationSelectFragment extends Fragment {
 
@@ -24,6 +35,7 @@ public class LocationSelectFragment extends Fragment {
     private ArrayList<String> locations;
 
     private OnLocationSelectedListener onLocationSelectedListener;
+    private Subscription subscription;
 
     public LocationSelectFragment() {
     }
@@ -62,6 +74,8 @@ public class LocationSelectFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view,
                                     int position, long id) {
+                InputMethodManager imm = (InputMethodManager) getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
 
                 String location = (String) listView.getItemAtPosition(position);
                 SharedPreferences.Editor editor = getActivity().getPreferences(Context.MODE_PRIVATE).edit();
@@ -71,6 +85,19 @@ public class LocationSelectFragment extends Fragment {
                 onLocationSelectedListener.onLocationSelected(location);
             }
         });
+
+        RestAdapter restAdapter = new RestAdapter.Builder()
+                .setEndpoint("http://api.worldweatheronline.com")
+                .setLogLevel(RestAdapter.LogLevel.FULL)
+                .setLog(new RestAdapter.Log() {
+                    @Override
+                    public void log(String msg) {
+                        Log.i("ApiRequest", msg);
+                    }
+                })
+                .build();
+
+        final RequestManager service = restAdapter.create(RequestManager.class);
 
         editText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -83,9 +110,38 @@ public class LocationSelectFragment extends Fragment {
                 if (editText.getText().length() >= 3) {
                     String location = editText.getText().toString();
 
-                    adapter.clear();
-                    adapter.add(location);
-                    adapter.notifyDataSetChanged();
+                    if (subscription == null || subscription.isUnsubscribed()) {
+                        subscription = service.getLocation(location, Keys.getWeatherApiKey())
+                                .subscribeOn(Schedulers.io())
+                                .observeOn(AndroidSchedulers.mainThread())
+                                .subscribe(new Observer<LocationApiData>() {
+                                    @Override
+                                    public void onCompleted() {
+                                        if (subscription != null && !subscription.isUnsubscribed()) {
+                                            subscription.unsubscribe();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onError(Throwable e) {
+
+                                        if (subscription != null && !subscription.isUnsubscribed()) {
+                                            subscription.unsubscribe();
+                                        }
+                                    }
+
+                                    @Override
+                                    public void onNext(LocationApiData locationApiData) {
+                                        adapter.clear();
+                                        List<Result> results = locationApiData.getSearchApi().getResult();
+                                        for (Result result : results) {
+                                            adapter.add(result.getAreaName().get(0).getValue());
+                                        }
+
+                                        adapter.notifyDataSetChanged();
+                                    }
+                                });
+                    }
                 } else {
                     adapter.clear();
                     adapter.notifyDataSetChanged();
@@ -107,6 +163,15 @@ public class LocationSelectFragment extends Fragment {
         ActionBar actionBar = getActivity().getActionBar();
         if (actionBar != null) {
             actionBar.setTitle(R.string.might_there_be_ice);
+        }
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+
+        if (subscription != null && !subscription.isUnsubscribed()) {
+            subscription.unsubscribe();
         }
     }
 }
