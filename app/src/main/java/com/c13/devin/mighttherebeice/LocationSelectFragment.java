@@ -6,17 +6,22 @@ import android.app.Fragment;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
 import android.widget.EditText;
-import android.widget.Toast;
+import android.widget.ListView;
+
+import java.util.ArrayList;
 
 public class LocationSelectFragment extends Fragment {
 
     public static final String LOCATION = "location";
+    private ArrayList<String> locations;
 
     private OnLocationSelectedListener onLocationSelectedListener;
 
@@ -44,26 +49,52 @@ public class LocationSelectFragment extends Fragment {
                              Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_location_select, container, false);
 
-        Button button = (Button) view.findViewById(R.id.submit);
-        final EditText editText = (EditText) view.findViewById(R.id.location);
+        final EditText editText = (EditText) view.findViewById(R.id.location_edit_text);
+        final ListView listView = (ListView) view.findViewById(R.id.location_list);
 
-        button.setOnClickListener(new View.OnClickListener() {
+        locations = new ArrayList<String>();
+
+        final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(), R.layout.list_view_text_view, locations);
+
+        listView.setAdapter(adapter);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            public void onClick(View v) {
+            public void onItemClick(AdapterView<?> parent, View view,
+                                    int position, long id) {
 
-                String location = editText.getText().toString();
-                if (location.isEmpty()) {
-                    Toast.makeText(getActivity(), R.string.error_empty_location, Toast.LENGTH_SHORT).show();
+                String location = (String) listView.getItemAtPosition(position);
+                SharedPreferences.Editor editor = getActivity().getPreferences(Context.MODE_PRIVATE).edit();
+                editor.putString(LOCATION, location);
+                editor.apply();
+
+                onLocationSelectedListener.onLocationSelected(location);
+            }
+        });
+
+        editText.addTextChangedListener(new TextWatcher() {
+            @Override
+            public void beforeTextChanged(CharSequence s, int start, int count, int after) {
+
+            }
+
+            @Override
+            public void onTextChanged(CharSequence s, int start, int before, int count) {
+                if (editText.getText().length() >= 3) {
+                    String location = editText.getText().toString();
+
+                    adapter.clear();
+                    adapter.add(location);
+                    adapter.notifyDataSetChanged();
                 } else {
-                    InputMethodManager imm = (InputMethodManager)getActivity().getSystemService(Context.INPUT_METHOD_SERVICE);
-                    imm.hideSoftInputFromWindow(editText.getWindowToken(), 0);
-
-                    SharedPreferences.Editor editor = getActivity().getPreferences(Context.MODE_PRIVATE).edit();
-                    editor.putString(LOCATION, location);
-                    editor.apply();
-
-                    onLocationSelectedListener.onLocationSelected(location);
+                    adapter.clear();
+                    adapter.notifyDataSetChanged();
                 }
+            }
+
+            @Override
+            public void afterTextChanged(Editable s) {
+
             }
         });
 

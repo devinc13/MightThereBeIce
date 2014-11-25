@@ -19,19 +19,17 @@
             android:text="@string/enter_location" />
 
         <EditText
-            android:id="@+id/location"
+            android:id="@+id/location_edit_text"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:hint="@string/location_hint" />
 
     </LinearLayout>
 
-    <Button
-        android:id="@+id/submit"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/input_layout"
-        android:layout_centerInParent="true"
-        android:text="@string/submit" />
+    <ListView
+        android:id="@+id/location_list"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/input_layout" />
 
 </RelativeLayout>
