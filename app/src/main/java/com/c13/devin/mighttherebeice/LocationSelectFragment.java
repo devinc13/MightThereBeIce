@@ -1,5 +1,6 @@
 package com.c13.devin.mighttherebeice;
 
+import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Fragment;
 import android.content.Context;
@@ -67,5 +68,14 @@ public class LocationSelectFragment extends Fragment {
         });
 
         return view;
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        ActionBar actionBar = getActivity().getActionBar();
+        if (actionBar != null) {
+            actionBar.setTitle(R.string.might_there_be_ice);
+        }
     }
 }

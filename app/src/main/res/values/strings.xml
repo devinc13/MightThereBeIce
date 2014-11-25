@@ -10,5 +10,8 @@
     <string name="action_refresh">Refresh</string>
     <string name="details">Details</string>
     <string name="hide_details">Hide Details</string>
+    <string name="checking_weather_data">Checking Weather Data</string>
+    <string name="error_checking_weather_data">Error Checking Weather Data</string>
+    <string name="might_there_be_ice">Might There Be Ice</string>
 
 </resources>
