@@ -1,6 +1,5 @@
 package com.c13.devin.mighttherebeice;
 
-import android.app.ActionBar;
 import android.app.Activity;
 import android.app.FragmentTransaction;
 import android.content.Context;
@@ -15,6 +14,7 @@ public class MainActivity extends Activity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
         if (savedInstanceState == null) {
             SharedPreferences sharedPreferences = getPreferences(Context.MODE_PRIVATE);
             if (sharedPreferences.contains(LocationSelectFragment.LOCATION)) {

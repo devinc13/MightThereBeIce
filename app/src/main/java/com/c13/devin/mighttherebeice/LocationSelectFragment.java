@@ -9,20 +9,25 @@ import android.os.Bundle;
 import android.text.Editable;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
 
 import java.util.ArrayList;
 import java.util.List;
 
 import LocationDataObjects.LocationApiData;
 import LocationDataObjects.Result;
+import LocationDataObjects.SearchApi;
 import retrofit.RestAdapter;
 import rx.Observer;
 import rx.Subscription;
@@ -36,6 +41,12 @@ public class LocationSelectFragment extends Fragment {
 
     private OnLocationSelectedListener onLocationSelectedListener;
     private Subscription subscription;
+    private List<Result> results;
+    private ArrayAdapter<String> adapter;
+    private ProgressBar progressBar;
+    private ListView listView;
+    private TextView noResultsTextView;
+    private RequestManager service;
 
     public LocationSelectFragment() {
     }
@@ -62,11 +73,14 @@ public class LocationSelectFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_location_select, container, false);
 
         final EditText editText = (EditText) view.findViewById(R.id.location_edit_text);
-        final ListView listView = (ListView) view.findViewById(R.id.location_list);
 
-        locations = new ArrayList<String>();
+        listView = (ListView) view.findViewById(R.id.location_list);
+        progressBar = (ProgressBar) view.findViewById(R.id.location_progress);
+        noResultsTextView = (TextView) view.findViewById(R.id.no_results);
 
-        final ArrayAdapter<String> adapter = new ArrayAdapter<String>(getActivity(), R.layout.list_view_text_view, locations);
+        locations = new ArrayList<>();
+
+        adapter = new ArrayAdapter<>(getActivity(), R.layout.list_view_text_view, locations);
 
         listView.setAdapter(adapter);
 
@@ -97,7 +111,7 @@ public class LocationSelectFragment extends Fragment {
                 })
                 .build();
 
-        final RequestManager service = restAdapter.create(RequestManager.class);
+        service = restAdapter.create(RequestManager.class);
 
         editText.addTextChangedListener(new TextWatcher() {
             @Override
@@ -107,50 +121,24 @@ public class LocationSelectFragment extends Fragment {
 
             @Override
             public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if (editText.getText().length() >= 3) {
-                    String location = editText.getText().toString();
 
-                    if (subscription == null || subscription.isUnsubscribed()) {
-                        subscription = service.getLocation(location, Keys.getWeatherApiKey())
-                                .subscribeOn(Schedulers.io())
-                                .observeOn(AndroidSchedulers.mainThread())
-                                .subscribe(new Observer<LocationApiData>() {
-                                    @Override
-                                    public void onCompleted() {
-                                        if (subscription != null && !subscription.isUnsubscribed()) {
-                                            subscription.unsubscribe();
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onError(Throwable e) {
-
-                                        if (subscription != null && !subscription.isUnsubscribed()) {
-                                            subscription.unsubscribe();
-                                        }
-                                    }
-
-                                    @Override
-                                    public void onNext(LocationApiData locationApiData) {
-                                        adapter.clear();
-                                        List<Result> results = locationApiData.getSearchApi().getResult();
-                                        for (Result result : results) {
-                                            adapter.add(result.getAreaName().get(0).getValue());
-                                        }
-
-                                        adapter.notifyDataSetChanged();
-                                    }
-                                });
-                    }
-                } else {
-                    adapter.clear();
-                    adapter.notifyDataSetChanged();
-                }
             }
 
             @Override
-            public void afterTextChanged(Editable s) {
+            public void afterTextChanged(Editable editable) {
+                findLocation(editable.toString());
+            }
+        });
 
+        // If user presses enter or done on keyboard, search for location
+        editText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if ((actionId == EditorInfo.IME_ACTION_DONE)) {
+                    findLocation(editText.getText().toString());
+                }
+
+                return false;
             }
         });
 
@@ -174,4 +162,78 @@ public class LocationSelectFragment extends Fragment {
             subscription.unsubscribe();
         }
     }
+
+    private void findLocation(String location) {
+
+        if (subscription != null && !subscription.isUnsubscribed()) {
+            subscription.unsubscribe();
+        }
+
+        if (location.length() >= 2) {
+            progressBar.setVisibility(View.VISIBLE);
+
+            subscription = service.getLocation(location, Keys.getWeatherApiKey())
+                    .subscribeOn(Schedulers.io())
+                    .observeOn(AndroidSchedulers.mainThread())
+                    .subscribe(locationObserver);
+
+        } else {
+            progressBar.setVisibility(View.GONE);
+            adapter.clear();
+            results = null;
+            noResultsTextView.setVisibility(View.GONE);
+            adapter.notifyDataSetChanged();
+        }
+    }
+
+    Observer locationObserver = new Observer<LocationApiData>() {
+        @Override
+        public void onCompleted() {
+            if (subscription != null && !subscription.isUnsubscribed()) {
+                subscription.unsubscribe();
+            }
+        }
+
+        @Override
+        public void onError(Throwable e) {
+            if (subscription != null && !subscription.isUnsubscribed()) {
+                subscription.unsubscribe();
+            }
+            progressBar.setVisibility(View.GONE);
+
+            adapter.clear();
+            listView.setVisibility(View.GONE);
+            noResultsTextView.setText(R.string.locations_error);
+            noResultsTextView.setVisibility(View.VISIBLE);
+
+            adapter.notifyDataSetChanged();
+        }
+
+        @Override
+        public void onNext(LocationApiData locationApiData) {
+            adapter.clear();
+            progressBar.setVisibility(View.GONE);
+
+            SearchApi searchApi = locationApiData.getSearchApi();
+            if (searchApi == null) {
+                listView.setVisibility(View.GONE);
+                noResultsTextView.setText(R.string.no_results);
+                noResultsTextView.setVisibility(View.VISIBLE);
+
+                adapter.notifyDataSetChanged();
+                return;
+            }
+
+            noResultsTextView.setVisibility(View.GONE);
+            listView.setVisibility(View.VISIBLE);
+
+            results = searchApi.getResult();
+
+            for (Result result : results) {
+                adapter.add(result.getAreaName().get(0).getValue() + ", " + result.getCountry().get(0).getValue());
+            }
+
+            adapter.notifyDataSetChanged();
+        }
+    };
 }

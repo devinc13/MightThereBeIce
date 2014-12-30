@@ -4,7 +4,10 @@ import android.app.ActionBar;
 import android.app.Activity;
 import android.app.Fragment;
 import android.app.ProgressDialog;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v7.widget.CardView;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
@@ -24,6 +27,7 @@ import android.widget.Toast;
 
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 import DataObjects.ApiData;
 import DataObjects.Hourly;
@@ -38,12 +42,17 @@ public class MightThereBeIceFragment extends Fragment {
     private TextView resultsTextView;
     private TableLayout detailsTable;
     private Button detailsButton;
+    private CardView resultsCardView;
     private CardView detailsCardView;
     private Subscription subscription;
     private ApiData apiData = null;
     private boolean detailsHidden = true;
     private ProgressDialog progressDialog;
     private OnChangeLocationSelectedListener onChangeLocationSelectedListener;
+
+    public static final int Celsius = 0;
+    public static final int Fahrenheit = 1;
+
 
     public interface OnChangeLocationSelectedListener {
         public void onChangeLocationSelected();
@@ -75,6 +84,7 @@ public class MightThereBeIceFragment extends Fragment {
         detailsTable = (TableLayout) view.findViewById(R.id.details_table);
         detailsButton = (Button) view.findViewById(R.id.button_details);
         detailsCardView = (CardView) view.findViewById(R.id.card_view_details);
+        resultsCardView = (CardView) view.findViewById(R.id.card_view_results);
         return view;
     }
 
@@ -92,6 +102,11 @@ public class MightThereBeIceFragment extends Fragment {
             return true;
         } else if (id == R.id.action_refresh) {
             getContent();
+            return true;
+        } else if (id == R.id.action_settings) {
+            Intent intent = new Intent(getActivity(), SettingsActivity.class);
+            startActivity(intent);
+           return true;
         }
 
         return super.onOptionsItemSelected(item);
@@ -167,6 +182,7 @@ public class MightThereBeIceFragment extends Fragment {
                         if (progressDialog.isShowing()) {
                             progressDialog.dismiss();
                         }
+                        resultsCardView.setVisibility(View.GONE);
 
                         Toast.makeText(getActivity(), R.string.error_checking_weather_data, Toast.LENGTH_LONG).show();
                     }
@@ -174,6 +190,7 @@ public class MightThereBeIceFragment extends Fragment {
                     @Override
                     public void onNext(ApiData response) {
                         apiData = response;
+                        resultsCardView.setVisibility(View.VISIBLE);
                         setupContent();
                     }
                 });
@@ -207,11 +224,17 @@ public class MightThereBeIceFragment extends Fragment {
         int hour = c.get(Calendar.HOUR_OF_DAY) * 100;
         int count = 0;
 
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        int TemperatureUnits = Integer.valueOf(prefs.getString("temperature_units", "-1"));
+
+        // Make sure we aren't adding to a previously filled in table
+        detailsTable.removeAllViews();
+
         for (int i = 1; i >= 0; i--) {
             List<Hourly> hourly = apiData.getData().getWeather().get(i).getHourly();
             for (int j = hourly.size() - 1; j >= 0; j--) {
                 // Check if the time is before the current time, or if we have passed into the previous day
-                if (Integer.valueOf(hourly.get(j).getTime()) < hour || i == 0) {
+                if (Integer.valueOf(hourly.get(j).getTime()) <= hour || i == 0) {
                     if (count > 8) {
                         break;
                     }
@@ -235,7 +258,16 @@ public class MightThereBeIceFragment extends Fragment {
                     textView2.setText(getTimeString(hourly.get(j).getTime()));
                     tableRow.addView(textView2);
                     TextView textView3 = new TextView(getActivity());
-                    textView3.setText(hourly.get(j).getTempC() + "°C");
+
+                    if (TemperatureUnits == Fahrenheit) {
+                        textView3.setText(hourly.get(j).getTempF() + "°F");
+                    } else if (TemperatureUnits == Celsius) {
+                        textView3.setText(hourly.get(j).getTempC() + "°C");
+                    } else {
+                        // Default to Celsius
+                        textView3.setText(hourly.get(j).getTempC() + "°C");
+                    }
+
                     tableRow.addView(textView3);
                     TextView textView4 = new TextView(getActivity());
                     textView4.setText(hourly.get(j).getPrecipMM() + " mm precipitation");
@@ -249,16 +281,17 @@ public class MightThereBeIceFragment extends Fragment {
         String reason;
         if (below0 && precipitation) {
             severity = "High";
-            reason = "There was precipitation and the temperature was below 0 degrees Celsius in the last 24 hours.";
+            reason = "There was precipitation and the temperature was below freezing in the last 24 hours.";
         } else if (below0) {
             severity = "Medium";
-            reason = "The temperature was below 0 degrees Celsius in the last 24 hours.";
+            reason = "The temperature was below freezing in the last 24 hours.";
         } else {
             severity = "Low";
-            reason = "The temperature hasn't been below 0 degrees Celsius in the last 24 hours.";
+            reason = "The temperature hasn't been below freezing in the last 24 hours.";
         }
 
-        String result = "There is a " + severity + " chance of ice.\n" + reason;
+        int minute = c.get(Calendar.MINUTE);
+        String result = "There is a " + severity + " chance of ice.\n" + reason + "\nLast updated on " + c.getDisplayName(Calendar.MONTH, Calendar.LONG, Locale.CANADA) + " " + c.get(Calendar.DAY_OF_MONTH) + " at " + c.get(Calendar.HOUR_OF_DAY) + ":" + (minute < 10 ? "0" + minute : minute);
         SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder(result);
         StyleSpan styleSpan = new StyleSpan(android.graphics.Typeface.BOLD);
         spannableStringBuilder.setSpan(styleSpan, 11, 11 + severity.length(), Spannable.SPAN_INCLUSIVE_INCLUSIVE);
@@ -270,22 +303,10 @@ public class MightThereBeIceFragment extends Fragment {
         if ("0".equals(time)) {
             return "00:00";
         } else if (time.length() == 3) {
-            return "0" + time.substring(0,1) + ":00";
+            return "0" + time.substring(0, 1) + ":00";
         } else {
-            return time.substring(0,2) + ":00";
+            return time.substring(0, 2) + ":00";
         }
-    }
-
-    private String getTemperatureString(String temperature) {
-        switch (temperature.length()) {
-            case 1:
-                return "    " + temperature;
-            case 2:
-                return "  " + temperature;
-            default:
-                return temperature;
-        }
-
     }
 
     @Override

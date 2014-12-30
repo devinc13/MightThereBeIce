@@ -2,16 +2,18 @@
 <resources>
 
     <string name="app_name">Might There Be Ice</string>
-    <string name="enter_location">Enter your location: </string>
-    <string name="location_hint">City or Lat/Lng</string>\
+    <string name="location_hint">Enter your location:</string>
     <string name="submit">Might There Be Ice?</string>
-    <string name="error_empty_location">Please enter a location</string>
     <string name="action_change_location">Change Location</string>
     <string name="action_refresh">Refresh</string>
+    <string name="action_settings">Settings</string>
     <string name="details">Details</string>
     <string name="hide_details">Hide Details</string>
     <string name="checking_weather_data">Checking Weather Data</string>
     <string name="error_checking_weather_data">Error Checking Weather Data</string>
     <string name="might_there_be_ice">Might There Be Ice</string>
+    <string name="no_results">No Locations Found</string>
+    <string name="locations_error">Error finding locations</string>
+    <string name="temperature_units">Temperature Units</string>
 
 </resources>
