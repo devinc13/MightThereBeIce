@@ -245,7 +245,8 @@ public class MightThereBeIceFragment extends Fragment {
                         below0 = true;
                     }
 
-                    if (Float.valueOf(hourly.get(j).getPrecipMM()) > 1.0) {
+                    // Make sure there is a reasonable amount of precipitation, not just one rain drop
+                    if (Float.valueOf(hourly.get(j).getPrecipMM()) > 0.1) {
                         precipitation = true;
                     }
 
