@@ -119,6 +119,7 @@ public class MightThereBeIceFragment extends Fragment {
             getContent();
             detailsCardView.setVisibility(View.GONE);
         } else {
+            resultsCardView.setVisibility(View.VISIBLE);
             setupContent();
             if (detailsHidden) {
                 detailsCardView.setVisibility(View.GONE);
