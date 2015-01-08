@@ -230,7 +230,7 @@ public class LocationSelectFragment extends Fragment {
             results = searchApi.getResult();
 
             for (Result result : results) {
-                adapter.add(result.getAreaName().get(0).getValue() + ", " + result.getCountry().get(0).getValue());
+                adapter.add(result.getAreaName().get(0).getValue() + ", " + result.getRegion().get(0).getValue()+ ", " + result.getCountry().get(0).getValue());
             }
 
             adapter.notifyDataSetChanged();
